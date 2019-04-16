@@ -1,81 +1,104 @@
+# -----------------------------------------------------------------------------
+# Terraform AWS to deploy Hasura with Application Load Balancer in an Auto
+# Scaling Group
+# -----------------------------------------------------------------------------
+
 provider "aws" {
-  region     = "${var.region}"
+  region = "${var.region}"
 }
-### VPC
+
+# -----------------------------------------------------------------------------
+# Service role allowing AWS to manage resources required for ECS
+# -----------------------------------------------------------------------------
+
+resource "aws_iam_service_linked_role" "ecs_service" {
+  aws_service_name = "ecs.amazonaws.com"
+}
+
+# -----------------------------------------------------------------------------
+# Create the certificate
+# -----------------------------------------------------------------------------
+
+resource "aws_acm_certificate" "hasura" {
+  domain_name       = "hasura.${var.domain}"
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Validate the certificate
+# -----------------------------------------------------------------------------
+
+data "aws_route53_zone" "hasura" {
+  name = "${var.domain}."
+}
+
+resource "aws_route53_record" "hasura_validation" {
+  depends_on = ["aws_acm_certificate.hasura"]
+  name       = "${lookup(aws_acm_certificate.hasura.domain_validation_options[0], "resource_record_name")}"
+  type       = "${lookup(aws_acm_certificate.hasura.domain_validation_options[0], "resource_record_type")}"
+  zone_id    = "${data.aws_route53_zone.hasura.zone_id}"
+  records    = ["${lookup(aws_acm_certificate.hasura.domain_validation_options[0], "resource_record_value")}"]
+  ttl        = 300
+}
+
+resource "aws_acm_certificate_validation" "hasura" {
+  certificate_arn         = "${aws_acm_certificate.hasura.arn}"
+  validation_record_fqdns = ["${aws_route53_record.hasura_validation.*.fqdn}"]
+}
+
+# -----------------------------------------------------------------------------
+# Create VPC
+# -----------------------------------------------------------------------------
 
 # Fetch AZs in the current region
 data "aws_availability_zones" "available" {}
 
-resource "aws_vpc" "datastore" {
+resource "aws_vpc" "hasura" {
   cidr_block = "172.17.0.0/16"
 }
 
 # Create var.az_count private subnets for RDS, each in a different AZ
-resource "aws_subnet" "datastore_rds" {
+resource "aws_subnet" "hasura_rds" {
   count             = "${var.az_count}"
-  cidr_block        = "${cidrsubnet(aws_vpc.datastore.cidr_block, 8, count.index)}"
+  cidr_block        = "${cidrsubnet(aws_vpc.hasura.cidr_block, 8, count.index)}"
   availability_zone = "${data.aws_availability_zones.available.names[count.index]}"
-  vpc_id            = "${aws_vpc.datastore.id}"
+  vpc_id            = "${aws_vpc.hasura.id}"
 }
 
 # Create var.az_count public subnets for Hasura, each in a different AZ
-resource "aws_subnet" "datastore_ecs" {
+resource "aws_subnet" "hasura_ecs" {
   count                   = "${var.az_count}"
-  cidr_block              = "${cidrsubnet(aws_vpc.datastore.cidr_block, 8, var.az_count + count.index)}"
+  cidr_block              = "${cidrsubnet(aws_vpc.hasura.cidr_block, 8, var.az_count + count.index)}"
   availability_zone       = "${data.aws_availability_zones.available.names[count.index]}"
-  vpc_id                  = "${aws_vpc.datastore.id}"
+  vpc_id                  = "${aws_vpc.hasura.id}"
   map_public_ip_on_launch = true
 }
 
 # IGW for the public subnet
-resource "aws_internet_gateway" "datastore" {
-  vpc_id = "${aws_vpc.datastore.id}"
+resource "aws_internet_gateway" "hasura" {
+  vpc_id = "${aws_vpc.hasura.id}"
 }
 
 # Route the public subnet traffic through the IGW
 resource "aws_route" "internet_access" {
-  route_table_id         = "${aws_vpc.datastore.main_route_table_id}"
+  route_table_id         = "${aws_vpc.hasura.main_route_table_id}"
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.datastore.id}"
+  gateway_id             = "${aws_internet_gateway.hasura.id}"
 }
 
+# -----------------------------------------------------------------------------
+# Create security groups
+# -----------------------------------------------------------------------------
 
-### ALB
-
-resource "aws_alb" "datastore" {
-  name            = "datastore-alb-${var.environment}"
-  subnets         = ["${aws_subnet.datastore_ecs.*.id}"]
-  security_groups = ["${aws_security_group.datastore_alb.id}"]
-}
-
-resource "aws_alb_target_group" "datastore_hasura" {
-  name        = "datastore-alb-${var.environment}"
-  port        = 8080
-  protocol    = "HTTP"
-  vpc_id      = "${aws_vpc.datastore.id}"
-  target_type = "ip"
-  health_check {
-    path = "/"
-    matcher = "302"
-  }
-}
-
-resource "aws_alb_listener" "datastore" {
-  load_balancer_arn = "${aws_alb.datastore.id}"
-  port              = "443"
-  protocol          = "HTTPS"
-  certificate_arn   = "${data.aws_acm_certificate.datastore.arn}"
-
-  default_action {
-    target_group_arn = "${aws_alb_target_group.datastore_hasura.id}"
-    type             = "forward"
-  }
-}
-
-resource "aws_security_group" "datastore_alb" {
-  name        = "datastore-alb-${var.environment}"
-  description = "Allow access on port 80 only to ALB"
-  vpc_id      = "${aws_vpc.datastore.id}"
+# Internet to ALB
+resource "aws_security_group" "hasura_alb" {
+  name        = "hasura-alb"
+  description = "Allow access on port 443 only to ALB"
+  vpc_id      = "${aws_vpc.hasura.id}"
 
   ingress {
     protocol    = "tcp"
@@ -85,55 +108,172 @@ resource "aws_security_group" "datastore_alb" {
   }
 
   egress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
-data "aws_route53_zone" "datastore" {
-  name         = "${var.domain}."
-}
-resource "aws_route53_record" "datastore" {
-  zone_id = "${data.aws_route53_zone.datastore.zone_id}"
-  name    = "datastore.${var.environment}.${var.domain}"
-  type    = "A"
+# ALB TO ECS
+resource "aws_security_group" "hasura_ecs" {
+  name        = "hasura-tasks"
+  description = "allow inbound access from the ALB only"
+  vpc_id      = "${aws_vpc.hasura.id}"
 
-  alias {
-    name                   = "${aws_alb.datastore.dns_name}"
-    zone_id                = "${aws_alb.datastore.zone_id}"
-    evaluate_target_health = true
+  ingress {
+    protocol        = "tcp"
+    from_port       = "8080"
+    to_port         = "8080"
+    security_groups = ["${aws_security_group.hasura_alb.id}"]
+  }
+
+  egress {
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
-data "aws_acm_certificate" "datastore" {
-  domain   = "datastore.${var.environment}.${var.domain}"
-  types       = ["AMAZON_ISSUED"] 
-  most_recent = true
-  statuses = ["ISSUED"]
+# ECS to RDS
+resource "aws_security_group" "hasura_rds" {
+  name        = "hasura-rds"
+  description = "allow inbound access from the hasura tasks only"
+  vpc_id      = "${aws_vpc.hasura.id}"
+
+  ingress {
+    protocol        = "tcp"
+    from_port       = "5432"
+    to_port         = "5432"
+    security_groups = ["${aws_security_group.hasura_ecs.id}"]
+  }
+
+  egress {
+    protocol    = "-1"
+    from_port   = 0
+    to_port     = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
+# -----------------------------------------------------------------------------
+# Create RDS
+# -----------------------------------------------------------------------------
 
-### ECS
-resource "aws_ecs_cluster" "datastore" {
-  name = "datastore-cluster-${var.environment}"
+resource "aws_db_subnet_group" "hasura" {
+  name       = "hasura"
+  subnet_ids = ["${aws_subnet.hasura_rds.*.id}"]
 }
 
-resource "aws_ecs_task_definition" "datastore_hasura" {
-  family                   = "hasura-${var.environment}"
+resource "aws_db_instance" "hasura" {
+  name                   = "${var.rds_db_name}"
+  identifier             = "hasura"
+  username               = "${var.rds_username}"
+  password               = "${var.rds_password}"
+  port                   = "5432"
+  engine                 = "postgres"
+  engine_version         = "10.5"
+  instance_class         = "${var.rds_instance}"
+  allocated_storage      = "10"
+  storage_encrypted      = false
+  vpc_security_group_ids = ["${aws_security_group.hasura_rds.id}"]
+  db_subnet_group_name   = "${aws_db_subnet_group.hasura.name}"
+  parameter_group_name   = "default.postgres10"
+  multi_az               = "${var.multi_az}"
+  storage_type           = "gp2"
+  publicly_accessible    = false
+
+  # snapshot_identifier       = "hasura"
+  allow_major_version_upgrade = false
+  auto_minor_version_upgrade  = false
+  apply_immediately           = true
+  maintenance_window          = "sun:02:00-sun:04:00"
+  skip_final_snapshot         = false
+  copy_tags_to_snapshot       = true
+  backup_retention_period     = 7
+  backup_window               = "04:00-06:00"
+  final_snapshot_identifier   = "hasura"
+}
+
+# -----------------------------------------------------------------------------
+# Create ECS cluster
+# -----------------------------------------------------------------------------
+
+resource "aws_ecs_cluster" "hasura" {
+  name = "hasura-cluster"
+}
+
+# -----------------------------------------------------------------------------
+# Create logging
+# -----------------------------------------------------------------------------
+
+resource "aws_cloudwatch_log_group" "hasura" {
+  name = "/ecs/hasura"
+}
+
+# -----------------------------------------------------------------------------
+# Create IAM for logging
+# -----------------------------------------------------------------------------
+
+data "aws_iam_policy_document" "hasura_log_publishing" {
+  statement {
+    actions = [
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+      "logs:PutLogEventsBatch",
+    ]
+
+    resources = ["arn:aws:logs:${var.region}:*:log-group:/ecs/hasura:*"]
+  }
+}
+
+resource "aws_iam_policy" "hasura_log_publishing" {
+  name        = "hasura-log-pub"
+  path        = "/"
+  description = "Allow publishing to cloudwach"
+
+  policy = "${data.aws_iam_policy_document.hasura_log_publishing.json}"
+}
+
+data "aws_iam_policy_document" "hasura_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "hasura_role" {
+  name               = "hasura-role"
+  path               = "/system/"
+  assume_role_policy = "${data.aws_iam_policy_document.hasura_assume_role_policy.json}"
+}
+
+resource "aws_iam_role_policy_attachment" "hasura_role_log_publishing" {
+  role       = "${aws_iam_role.hasura_role.name}"
+  policy_arn = "${aws_iam_policy.hasura_log_publishing.arn}"
+}
+
+# -----------------------------------------------------------------------------
+# Create a task definition
+# -----------------------------------------------------------------------------
+
+resource "aws_ecs_task_definition" "hasura" {
+  family                   = "hasura"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
-  execution_role_arn       = "${aws_iam_role.datastore_hasura_role.arn}"
+  execution_role_arn       = "${aws_iam_role.hasura_role.arn}"
 
   container_definitions = <<DEFINITION
     [
       {
-        "cpu": 250,
-        "image": "hasura/graphql-engine:v1.0.0-alpha31",
-        "memory": 512,
+        "image": "hasura/graphql-engine:${var.hasura_version_tag}",
         "name": "hasura",
         "networkMode": "awsvpc",
         "portMappings": [
@@ -145,7 +285,7 @@ resource "aws_ecs_task_definition" "datastore_hasura" {
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
-            "awslogs-group": "/ecs/datastore-hasura-${var.environment}",
+            "awslogs-group": "/ecs/hasura-hasura",
             "awslogs-region": "${var.region}",
             "awslogs-stream-prefix": "ecs"
           }
@@ -157,15 +297,24 @@ resource "aws_ecs_task_definition" "datastore_hasura" {
           },
           {
             "name": "HASURA_GRAPHQL_DATABASE_URL",
-            "value": "postgres://${var.rds_username}:${var.rds_password}@${aws_db_instance.datastore.endpoint}/${var.environment}"
+            "value": "postgres://${var.rds_username}:${var.rds_password}@${aws_db_instance.hasura.endpoint}/${var.rds_db_name}"
           },
           {
             "name": "HASURA_GRAPHQL_ENABLE_CONSOLE",
             "value": "true"
           },
           {
+            "name": "HASURA_GRAPHQL_CORS_DOMAIN",
+            "value": "https://app.${var.domain}:443"
+          },
+
+          {
+            "name": "HASURA_GRAPHQL_PG_CONNECTIONS",
+            "value": "100"
+          },
+          {
             "name": "HASURA_GRAPHQL_JWT_SECRET",
-            "value": "{\"type\":\"HS256\", \"key\": \"${var.hasura_jwt_secret}\"}"
+            "value": "{\"type\":\"HS256\", \"key\": \"${var.hasura_jwt_hmac_key}\"}"
           }
         ]
       }
@@ -173,152 +322,148 @@ resource "aws_ecs_task_definition" "datastore_hasura" {
 DEFINITION
 }
 
-resource "aws_ecs_service" "datastore_hasura" {
-  depends_on      = ["aws_ecs_task_definition.datastore_hasura", "aws_cloudwatch_log_group.datastore_hasura"]
-  name            = "datastore-service-${var.environment}"
-  cluster         = "${aws_ecs_cluster.datastore.id}"
-  task_definition = "${aws_ecs_task_definition.datastore_hasura.arn}"
-  desired_count   = "2"
+# -----------------------------------------------------------------------------
+# Create the ECS service
+# -----------------------------------------------------------------------------
+
+resource "aws_ecs_service" "hasura" {
+  depends_on      = ["aws_ecs_task_definition.hasura", "aws_cloudwatch_log_group.hasura"]
+  name            = "hasura-service"
+  cluster         = "${aws_ecs_cluster.hasura.id}"
+  task_definition = "${aws_ecs_task_definition.hasura.arn}"
+  desired_count   = "${var.multi_az == true ? "2" : "1"}"
   launch_type     = "FARGATE"
 
   network_configuration {
-    assign_public_ip  = true
-    security_groups   = ["${aws_security_group.datastore_ecs_hasura.id}"]
-    subnets           = ["${aws_subnet.datastore_ecs.*.id}"]
+    assign_public_ip = true
+    security_groups  = ["${aws_security_group.hasura_ecs.id}"]
+    subnets          = ["${aws_subnet.hasura_ecs.*.id}"]
   }
 
   load_balancer {
-    target_group_arn = "${aws_alb_target_group.datastore_hasura.id}"
+    target_group_arn = "${aws_alb_target_group.hasura.id}"
     container_name   = "hasura"
     container_port   = "8080"
   }
 
   depends_on = [
-    "aws_alb_listener.datastore",
+    "aws_alb_listener.hasura",
   ]
 }
 
-resource "aws_cloudwatch_log_group" "datastore_hasura" {
-  name = "/ecs/datastore-hasura-${var.environment}"
+# -----------------------------------------------------------------------------
+# Create the ALB log bucket
+# -----------------------------------------------------------------------------
+
+resource "aws_s3_bucket" "hasura" {
+  bucket = "hasura-${var.region}"
+  acl    = "private"
 }
 
-data "aws_iam_policy_document" "datastore_hasura_log_publishing" {
-  statement {
-    actions = [
-      "logs:CreateLogStream",
-      "logs:PutLogEvents",
-      "logs:PutLogEventsBatch",
-    ]
-    resources = ["arn:aws:logs:${var.region}:*:log-group:/ecs/datastore-hasura-${var.environment}:*"]
-  }
-}
+# -----------------------------------------------------------------------------
+# Add IAM policy to allow the ALB to log to it
+# -----------------------------------------------------------------------------
 
-resource "aws_iam_policy" "datastore_hasura_log_publishing" {
-  name        = "datastore-hasura-log-pub-${var.environment}"
-  path        = "/"
-  description = "Allow publishing to cloudwach"
+data "aws_elb_service_account" "main" {}
 
-  policy = "${data.aws_iam_policy_document.datastore_hasura_log_publishing.json}"
-}
+resource "aws_s3_bucket_policy" "hasura" {
+  bucket = "${aws_s3_bucket.hasura.id}"
 
-data "aws_iam_policy_document" "datastore_hasura_assume_role_policy" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["ecs-tasks.amazonaws.com"]
+  policy = <<POLICY
+{
+  "Id": "hasuraALBWrite",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "hasuraALBWrite",
+      "Action": [
+        "s3:PutObject"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::hasura-${var.region}/alb/*",
+      "Principal": {
+        "AWS": [
+          "${data.aws_elb_service_account.main.arn}"
+        ]
+      }
     }
+  ]
+}
+POLICY
+}
+
+# -----------------------------------------------------------------------------
+# Import ACM certificate
+# -----------------------------------------------------------------------------
+
+data "aws_acm_certificate" "hasura" {
+  domain      = "hasura.${var.domain}"
+  types       = ["AMAZON_ISSUED"]
+  most_recent = true
+  statuses    = ["ISSUED"]
+}
+
+# -----------------------------------------------------------------------------
+# Create the ALB
+# -----------------------------------------------------------------------------
+
+resource "aws_alb" "hasura" {
+  name            = "hasura-alb"
+  subnets         = ["${aws_subnet.hasura_ecs.*.id}"]
+  security_groups = ["${aws_security_group.hasura_alb.id}"]
+
+  access_logs {
+    bucket  = "${aws_s3_bucket.hasura.id}"
+    prefix  = "alb"
+    enabled = true
   }
 }
 
+# -----------------------------------------------------------------------------
+# Create the ALB target group for ECS
+# -----------------------------------------------------------------------------
 
-resource "aws_iam_role" "datastore_hasura_role" {
-  name               = "datastore-hasura-role-${var.environment}"
-  path               = "/system/"
-  assume_role_policy = "${data.aws_iam_policy_document.datastore_hasura_assume_role_policy.json}"
-}
+resource "aws_alb_target_group" "hasura" {
+  name        = "hasura-alb"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = "${aws_vpc.hasura.id}"
+  target_type = "ip"
 
-
-resource "aws_iam_role_policy_attachment" "datastore_hasura_role_log_publishing" {
-  role = "${aws_iam_role.datastore_hasura_role.name}"
-  policy_arn = "${aws_iam_policy.datastore_hasura_log_publishing.arn}"
-}
-
-resource "aws_security_group" "datastore_ecs_hasura" {
-  name        = "datastore-tasks-${var.environment}"
-  description = "allow inbound access from the ALB only"
-  vpc_id      = "${aws_vpc.datastore.id}"
-
-  ingress {
-    protocol        = "tcp"
-    from_port       = "8080"
-    to_port         = "8080"
-    security_groups = ["${aws_security_group.datastore_alb.id}"]
-  }
-
-  egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
+  health_check {
+    path    = "/"
+    matcher = "302"
   }
 }
 
-# RDS
-resource "aws_db_instance" "datastore" {
-    name                        = "${var.environment}"
-    identifier                  = "datastore-${var.environment}"
-    username                    = "${var.rds_username}"
-    password                    = "${var.rds_password}"
-    port                        = "5432"
-    engine                      = "postgres"
-    engine_version              = "10.5"
-    instance_class              = "db.t2.micro"
-    allocated_storage           = "10"
-    storage_encrypted           = false
-    vpc_security_group_ids      = ["${aws_security_group.datastore_rds.id}"]
-    db_subnet_group_name        = "${aws_db_subnet_group.datastore.name}"
-    parameter_group_name        = "default.postgres10"
-    multi_az                    = true
-    storage_type                = "gp2"
-    publicly_accessible         = false
-    # snapshot_identifier         = "datastore-${var.environment}"
-    allow_major_version_upgrade = false
-    auto_minor_version_upgrade  = false
-    apply_immediately           = true
-    maintenance_window          = "sun:02:00-sun:04:00"
-    skip_final_snapshot         = false
-    # copy_tags_to_snapshot       = "${var.copy_tags_to_snapshot}"
-    backup_retention_period     = 7
-    backup_window               = "04:00-06:00"
-    # tags                        = "${module.label.tags}"
-    final_snapshot_identifier   = "datastore-${var.environment}"
-  }
-  
+# -----------------------------------------------------------------------------
+# Create the ALB listener
+# -----------------------------------------------------------------------------
 
-resource "aws_security_group" "datastore_rds" {
-  name        = "datastore-rds-${var.environment}"
-  description = "allow inbound access from the hasura tasks only"
-  vpc_id      = "${aws_vpc.datastore.id}"
+resource "aws_alb_listener" "hasura" {
+  load_balancer_arn = "${aws_alb.hasura.id}"
+  port              = "443"
+  protocol          = "HTTPS"
+  certificate_arn   = "${aws_acm_certificate.hasura.arn}"
 
-  ingress {
-    protocol        = "tcp"
-    from_port       = "5432"
-    to_port         = "5432"
-    security_groups = ["${aws_security_group.datastore_ecs_hasura.id}"]
-  }
-
-  egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
+  default_action {
+    target_group_arn = "${aws_alb_target_group.hasura.id}"
+    type             = "forward"
   }
 }
 
+# -----------------------------------------------------------------------------
+# Create Route 53 record to point to the ALB
+# -----------------------------------------------------------------------------
 
-resource "aws_db_subnet_group" "datastore" {
-  name       = "datastore-${var.environment}"
-  subnet_ids = ["${aws_subnet.datastore_rds.*.id}"]
+resource "aws_route53_record" "hasura" {
+  zone_id = "${data.aws_route53_zone.hasura.zone_id}"
+  name    = "hasura.${var.domain}"
+  type    = "A"
+
+  alias {
+    name                   = "${aws_alb.hasura.dns_name}"
+    zone_id                = "${aws_alb.hasura.zone_id}"
+    evaluate_target_health = true
+  }
 }
