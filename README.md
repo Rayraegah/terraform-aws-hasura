@@ -45,4 +45,4 @@ module "hasura" {
 
 ## License
 
-MIT
+MIT. Based on [@elgordino](https://github.com/elgordino)'s architecture.
