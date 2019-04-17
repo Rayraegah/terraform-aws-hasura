@@ -21,7 +21,7 @@ variable "domain" {
 
 variable "hasura_version_tag" {
   description = "The hasura graphql engine version tag"
-  default     = "v1.0.0-alpha34"
+  default     = "v1.0.0-alpha42"
 }
 
 variable "hasura_access_key" {
