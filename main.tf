@@ -1,13 +1,4 @@
 # -----------------------------------------------------------------------------
-# Terraform AWS to deploy Hasura with Application Load Balancer in an Auto
-# Scaling Group
-# -----------------------------------------------------------------------------
-
-provider "aws" {
-  region = "${var.region}"
-}
-
-# -----------------------------------------------------------------------------
 # Service role allowing AWS to manage resources required for ECS
 # -----------------------------------------------------------------------------
 
