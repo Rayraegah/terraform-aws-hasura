@@ -347,7 +347,7 @@ resource "aws_ecs_service" "hasura" {
 # -----------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "hasura" {
-  bucket = "hasura-${var.region}"
+  bucket = "hasura-${var.region}-${var.domain}"
   acl    = "private"
 }
 
@@ -371,7 +371,7 @@ resource "aws_s3_bucket_policy" "hasura" {
         "s3:PutObject"
       ],
       "Effect": "Allow",
-      "Resource": "arn:aws:s3:::hasura-${var.region}/alb/*",
+      "Resource": "${aws_s3_bucket.hasura.arn}/alb/*",
       "Principal": {
         "AWS": [
           "${data.aws_elb_service_account.main.arn}"
