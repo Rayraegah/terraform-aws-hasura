@@ -276,7 +276,7 @@ resource "aws_ecs_task_definition" "hasura" {
         "logConfiguration": {
           "logDriver": "awslogs",
           "options": {
-            "awslogs-group": "/ecs/hasura-hasura",
+            "awslogs-group": "${aws_cloudwatch_log_group.hasura.name}",
             "awslogs-region": "${var.region}",
             "awslogs-stream-prefix": "ecs"
           }
