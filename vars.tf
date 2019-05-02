@@ -12,7 +12,7 @@
 
 variable "region" {
   description = "Region to deploy"
-  default     = "ap-northeast-1"   # Asia Pacific Tokyo
+  default     = "ap-northeast-1" # Asia Pacific Tokyo
 }
 
 variable "domain" {
@@ -20,10 +20,9 @@ variable "domain" {
 }
 
 variable "app_subdomain" {
-  description = "The Subdomain for your application that will make CORS requests to hasura.${domain}"
+  description = "The Subdomain for your application that will make CORS requests to hasura.domain"
   default     = "app"
 }
-
 variable "hasura_version_tag" {
   description = "The hasura graphql engine version tag"
   default     = "v1.0.0-alpha42"
