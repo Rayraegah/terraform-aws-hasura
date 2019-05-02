@@ -57,3 +57,8 @@ variable "multi_az" {
   description = "Whether to deploy RDS and ECS in multi AZ mode or not"
   default     = true
 }
+
+variable "app_subdomain" {
+  description = "The Subdomain for your application that will make CORS requests to hasura.${domain}"
+  default     = "app"
+}
