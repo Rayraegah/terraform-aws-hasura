@@ -31,6 +31,7 @@ module "hasura" {
   source              = "github.com/rayraegah/hasura-aws"
   region              = "YOUR DEPLOYMENT REGION"
   domain              = "YOUR DOMAIN NAME"
+  app_subdomain       = "YOUR HASURA APP SUBDOMAIN"
   hasura_version_tag  = "HASURA VERSION TAG FOR DEPLOYMENT"
   hasura_access_key   = "YOUR HASURA ADMIN ACCESS KEY"
   hasura_jwt_hmac_key = "YOUR HMAC KEY FOR JWT AUTHENTICATION"

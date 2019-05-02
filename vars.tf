@@ -19,6 +19,11 @@ variable "domain" {
   description = "Domain name. Service will be deployed at hasura.domain"
 }
 
+variable "app_subdomain" {
+  description = "The Subdomain for your application that will make CORS requests to hasura.${domain}"
+  default     = "app"
+}
+
 variable "hasura_version_tag" {
   description = "The hasura graphql engine version tag"
   default     = "v1.0.0-alpha42"
@@ -56,9 +61,4 @@ variable "az_count" {
 variable "multi_az" {
   description = "Whether to deploy RDS and ECS in multi AZ mode or not"
   default     = true
-}
-
-variable "app_subdomain" {
-  description = "The Subdomain for your application that will make CORS requests to hasura.${domain}"
-  default     = "app"
 }
