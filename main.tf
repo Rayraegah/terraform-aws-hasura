@@ -297,9 +297,8 @@ resource "aws_ecs_task_definition" "hasura" {
           },
           {
             "name": "HASURA_GRAPHQL_CORS_DOMAIN",
-            "value": "https://${var.app_subdomain}.${var.domain}:443"
+            "value": "https://${var.app_subdomain}.${var.domain}:443, https://${var.app_subdomain}.${var.domain}"
           },
-
           {
             "name": "HASURA_GRAPHQL_PG_CONNECTIONS",
             "value": "100"
