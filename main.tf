@@ -32,8 +32,8 @@ resource "aws_route53_record" "hasura_validation" {
   name       = aws_acm_certificate.hasura.domain_validation_options[0]["resource_record_name"]
   type       = aws_acm_certificate.hasura.domain_validation_options[0]["resource_record_type"]
   zone_id    = data.aws_route53_zone.hasura.zone_id
-  records = [aws_acm_certificate.hasura.domain_validation_options[0]["resource_record_value"]]
-  ttl     = 300
+  records    = [aws_acm_certificate.hasura.domain_validation_options[0]["resource_record_value"]]
+  ttl        = 300
 }
 
 resource "aws_acm_certificate_validation" "hasura" {
@@ -293,7 +293,7 @@ resource "aws_ecs_task_definition" "hasura" {
           },
           {
             "name": "HASURA_GRAPHQL_ENABLE_CONSOLE",
-            "value": "true"
+            "value": "${var.hasura_console_enabled}"
           },
           {
             "name": "HASURA_GRAPHQL_CORS_DOMAIN",
@@ -381,15 +381,15 @@ resource "aws_s3_bucket_policy" "hasura" {
 # -----------------------------------------------------------------------------
 
 resource "aws_alb" "hasura" {
-name            = "hasura-alb"
-subnets         = aws_subnet.hasura_ecs.*.id
-security_groups = [aws_security_group.hasura_alb.id]
+  name = "hasura-alb"
+  subnets = aws_subnet.hasura_ecs.*.id
+  security_groups = [aws_security_group.hasura_alb.id]
 
-access_logs {
-bucket  = aws_s3_bucket.hasura.id
-prefix  = "alb"
-enabled = true
-}
+  access_logs {
+    bucket = aws_s3_bucket.hasura.id
+    prefix = "alb"
+    enabled = true
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -397,16 +397,16 @@ enabled = true
 # -----------------------------------------------------------------------------
 
 resource "aws_alb_target_group" "hasura" {
-name        = "hasura-alb"
-port        = 8080
-protocol    = "HTTP"
-vpc_id      = aws_vpc.hasura.id
-target_type = "ip"
+  name = "hasura-alb"
+  port = 8080
+  protocol = "HTTP"
+  vpc_id = aws_vpc.hasura.id
+  target_type = "ip"
 
-health_check {
-path    = "/"
-matcher = "302"
-}
+  health_check {
+    path = "/"
+    matcher = "302"
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -414,15 +414,15 @@ matcher = "302"
 # -----------------------------------------------------------------------------
 
 resource "aws_alb_listener" "hasura" {
-load_balancer_arn = aws_alb.hasura.id
-port              = "443"
-protocol          = "HTTPS"
-certificate_arn   = aws_acm_certificate.hasura.arn
+  load_balancer_arn = aws_alb.hasura.id
+  port = "443"
+  protocol = "HTTPS"
+  certificate_arn = aws_acm_certificate.hasura.arn
 
-default_action {
-target_group_arn = aws_alb_target_group.hasura.id
-type             = "forward"
-}
+  default_action {
+    target_group_arn = aws_alb_target_group.hasura.id
+    type = "forward"
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -430,14 +430,14 @@ type             = "forward"
 # -----------------------------------------------------------------------------
 
 resource "aws_route53_record" "hasura" {
-zone_id = data.aws_route53_zone.hasura.zone_id
-name    = "hasura.${var.domain}"
-type    = "A"
+  zone_id = data.aws_route53_zone.hasura.zone_id
+  name = "hasura.${var.domain}"
+  type = "A"
 
-alias {
-name                   = aws_alb.hasura.dns_name
-zone_id                = aws_alb.hasura.zone_id
-evaluate_target_health = true
-}
+  alias {
+    name = aws_alb.hasura.dns_name
+    zone_id = aws_alb.hasura.zone_id
+    evaluate_target_health = true
+  }
 }
 

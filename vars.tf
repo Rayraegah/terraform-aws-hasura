@@ -36,6 +36,11 @@ variable "hasura_jwt_hmac_key" {
   description = "The secret shared HMAC key for JWT authentication"
 }
 
+variable "hasura_console_enabled" {
+  description = "Should the Hasura Console web interface be enabled?"
+  default     = "true"
+}
+
 variable "rds_username" {
   description = "The username for RDS"
 }
