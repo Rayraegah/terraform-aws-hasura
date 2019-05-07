@@ -457,3 +457,18 @@ resource "aws_route53_record" "hasura" {
   }
 }
 
+output "vpc" {
+  value = aws_vpc.hasura
+}
+
+output "private_subnets" {
+  value = aws_subnet.hasura_rds
+}
+
+output "public_subnets" {
+  value = aws_subnet.hasura_ecs
+}
+
+output "ecs_security_group" {
+  value = aws_security_group.hasura_ecs
+}
