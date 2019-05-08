@@ -66,3 +66,8 @@ variable "multi_az" {
   description = "Whether to deploy RDS and ECS in multi AZ mode or not"
   default     = true
 }
+
+variable "vpc_enable_dns_hostnames" {
+  description = "A boolean flag to enable/disable DNS hostnames in the VPC. Defaults false."
+  default     = false
+}
