@@ -58,7 +58,7 @@ resource "aws_vpc" "hasura" {
 }
 
 # Create var.az_count private subnets for RDS, each in a different AZ
-resource "aws_subnet" "hasura_rds" {
+resource "aws_subnet" "hasura_private" {
   count             = var.az_count
   cidr_block        = cidrsubnet(aws_vpc.hasura.cidr_block, 8, count.index)
   availability_zone = data.aws_availability_zones.available.names[count.index]
@@ -70,7 +70,7 @@ resource "aws_subnet" "hasura_rds" {
 }
 
 # Create var.az_count public subnets for Hasura, each in a different AZ
-resource "aws_subnet" "hasura_ecs" {
+resource "aws_subnet" "hasura_public" {
   count                   = var.az_count
   cidr_block              = cidrsubnet(aws_vpc.hasura.cidr_block, 8, var.az_count + count.index)
   availability_zone       = data.aws_availability_zones.available.names[count.index]
@@ -171,7 +171,7 @@ resource "aws_security_group" "hasura_rds" {
 
 resource "aws_db_subnet_group" "hasura" {
   name       = "hasura"
-  subnet_ids = aws_subnet.hasura_rds.*.id
+  subnet_ids = aws_subnet.hasura_private.*.id
 }
 
 resource "aws_db_instance" "hasura" {
@@ -349,7 +349,7 @@ resource "aws_ecs_service" "hasura" {
   network_configuration {
     assign_public_ip = true
     security_groups = [aws_security_group.hasura_ecs.id]
-    subnets = aws_subnet.hasura_ecs.*.id
+    subnets = aws_subnet.hasura_public.*.id
   }
 
   load_balancer {
@@ -398,7 +398,7 @@ resource "aws_s3_bucket_policy" "hasura" {
 
 resource "aws_alb" "hasura" {
   name = "hasura-alb"
-  subnets = aws_subnet.hasura_ecs.*.id
+  subnets = aws_subnet.hasura_public.*.id
   security_groups = [aws_security_group.hasura_alb.id]
 
   access_logs {
@@ -462,11 +462,11 @@ output "vpc" {
 }
 
 output "private_subnets" {
-  value = aws_subnet.hasura_rds
+  value = aws_subnet.hasura_private
 }
 
 output "public_subnets" {
-  value = aws_subnet.hasura_ecs
+  value = aws_subnet.hasura_public
 }
 
 output "ecs_security_group" {
