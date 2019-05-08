@@ -51,6 +51,10 @@ data "aws_availability_zones" "available" {
 
 resource "aws_vpc" "hasura" {
   cidr_block = "172.17.0.0/16"
+
+  tags = {
+    Name = "hasura"
+  }
 }
 
 # Create var.az_count private subnets for RDS, each in a different AZ
@@ -59,6 +63,10 @@ resource "aws_subnet" "hasura_rds" {
   cidr_block        = cidrsubnet(aws_vpc.hasura.cidr_block, 8, count.index)
   availability_zone = data.aws_availability_zones.available.names[count.index]
   vpc_id            = aws_vpc.hasura.id
+
+  tags = {
+    Name = "hasura #${count.index} (private)"
+  }
 }
 
 # Create var.az_count public subnets for Hasura, each in a different AZ
@@ -68,11 +76,19 @@ resource "aws_subnet" "hasura_ecs" {
   availability_zone       = data.aws_availability_zones.available.names[count.index]
   vpc_id                  = aws_vpc.hasura.id
   map_public_ip_on_launch = true
+
+  tags = {
+    Name = "hasura #${var.az_count + count.index} (public)"
+  }
 }
 
 # IGW for the public subnet
 resource "aws_internet_gateway" "hasura" {
   vpc_id = aws_vpc.hasura.id
+
+  tags = {
+    Name = "hasura"
+  }
 }
 
 # Route the public subnet traffic through the IGW
