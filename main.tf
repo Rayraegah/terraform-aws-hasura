@@ -50,7 +50,7 @@ data "aws_availability_zones" "available" {
 }
 
 resource "aws_vpc" "hasura" {
-  cidr_block = "172.17.0.0/16"
+  cidr_block           = "172.17.0.0/16"
   enable_dns_hostnames = var.vpc_enable_dns_hostnames
 
   tags = {
