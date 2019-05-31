@@ -71,3 +71,8 @@ variable "vpc_enable_dns_hostnames" {
   description = "A boolean flag to enable/disable DNS hostnames in the VPC. Defaults false."
   default     = false
 }
+
+variable "environment" {
+  description = "Environment variables for ECS task: [ { name = \"foo\", value = \"bar\" }, ..]"
+  default     = []
+}

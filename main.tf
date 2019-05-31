@@ -321,7 +321,7 @@ locals {
         }
       }
 
-      environment = local.ecs_environment
+      environment = flatten([local.ecs_environment, var.environment])
     }
   ]
 }
