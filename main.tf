@@ -271,6 +271,61 @@ resource "aws_iam_role_policy_attachment" "hasura_role_log_publishing" {
 # Create a task definition
 # -----------------------------------------------------------------------------
 
+locals {
+  ecs_environment = [
+    {
+      name  = "HASURA_GRAPHQL_ACCESS_KEY",
+      value = "${var.hasura_access_key}"
+    },
+    {
+      name  = "HASURA_GRAPHQL_DATABASE_URL",
+      value = "postgres://${var.rds_username}:${var.rds_password}@${aws_db_instance.hasura.endpoint}/${var.rds_db_name}"
+    },
+    {
+      name  = "HASURA_GRAPHQL_ENABLE_CONSOLE",
+      value = "${var.hasura_console_enabled}"
+    },
+    {
+      name  = "HASURA_GRAPHQL_CORS_DOMAIN",
+      value = "https://${var.app_subdomain}.${var.domain}:443, https://${var.app_subdomain}.${var.domain}"
+    },
+    {
+      name  = "HASURA_GRAPHQL_PG_CONNECTIONS",
+      value = "100"
+    },
+    {
+      name  = "HASURA_GRAPHQL_JWT_SECRET",
+      value = "{\"type\":\"HS256\", \"key\": \"${var.hasura_jwt_hmac_key}\"}"
+    }
+  ]
+
+  ecs_container_definitions = [
+    {
+      image       = "hasura/graphql-engine:${var.hasura_version_tag}"
+      name        = "hasura",
+      networkMode = "awsvpc",
+
+      portMappings = [
+        {
+          containerPort = 8080,
+          hostPort      = 8080
+        }
+      ]
+
+      logConfiguration = {
+        logDriver = "awslogs",
+        options = {
+          awslogs-group         = "${aws_cloudwatch_log_group.hasura.name}",
+          awslogs-region        = "${var.region}",
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+
+      environment = local.ecs_environment
+    }
+  ]
+}
+
 resource "aws_ecs_task_definition" "hasura" {
   family                   = "hasura"
   network_mode             = "awsvpc"
@@ -279,56 +334,7 @@ resource "aws_ecs_task_definition" "hasura" {
   memory                   = "512"
   execution_role_arn       = aws_iam_role.hasura_role.arn
 
-  container_definitions = <<DEFINITION
-    [
-      {
-        "image": "hasura/graphql-engine:${var.hasura_version_tag}",
-        "name": "hasura",
-        "networkMode": "awsvpc",
-        "portMappings": [
-          {
-            "containerPort": 8080,
-            "hostPort": 8080
-          }
-        ],
-        "logConfiguration": {
-          "logDriver": "awslogs",
-          "options": {
-            "awslogs-group": "${aws_cloudwatch_log_group.hasura.name}",
-            "awslogs-region": "${var.region}",
-            "awslogs-stream-prefix": "ecs"
-          }
-        },
-        "environment": [
-          {
-            "name": "HASURA_GRAPHQL_ACCESS_KEY",
-            "value": "${var.hasura_access_key}"
-          },
-          {
-            "name": "HASURA_GRAPHQL_DATABASE_URL",
-            "value": "postgres://${var.rds_username}:${var.rds_password}@${aws_db_instance.hasura.endpoint}/${var.rds_db_name}"
-          },
-          {
-            "name": "HASURA_GRAPHQL_ENABLE_CONSOLE",
-            "value": "${var.hasura_console_enabled}"
-          },
-          {
-            "name": "HASURA_GRAPHQL_CORS_DOMAIN",
-            "value": "https://${var.app_subdomain}.${var.domain}:443, https://${var.app_subdomain}.${var.domain}"
-          },
-          {
-            "name": "HASURA_GRAPHQL_PG_CONNECTIONS",
-            "value": "100"
-          },
-          {
-            "name": "HASURA_GRAPHQL_JWT_SECRET",
-            "value": "{\"type\":\"HS256\", \"key\": \"${var.hasura_jwt_hmac_key}\"}"
-          }
-        ]
-      }
-    ]
-DEFINITION
-
+  container_definitions = jsonencode(local.ecs_container_definitions)
 }
 
 # -----------------------------------------------------------------------------
@@ -341,22 +347,22 @@ resource "aws_ecs_service" "hasura" {
     aws_cloudwatch_log_group.hasura,
     aws_alb_listener.hasura
   ]
-  name = "hasura-service"
-  cluster = aws_ecs_cluster.hasura.id
+  name            = "hasura-service"
+  cluster         = aws_ecs_cluster.hasura.id
   task_definition = aws_ecs_task_definition.hasura.arn
-  desired_count = var.multi_az == true ? "2" : "1"
-  launch_type = "FARGATE"
+  desired_count   = var.multi_az == true ? "2" : "1"
+  launch_type     = "FARGATE"
 
   network_configuration {
     assign_public_ip = true
-    security_groups = [aws_security_group.hasura_ecs.id]
-    subnets = aws_subnet.hasura_public.*.id
+    security_groups  = [aws_security_group.hasura_ecs.id]
+    subnets          = aws_subnet.hasura_public.*.id
   }
 
   load_balancer {
     target_group_arn = aws_alb_target_group.hasura.id
-    container_name = "hasura"
-    container_port = "8080"
+    container_name   = "hasura"
+    container_port   = "8080"
   }
 }
 
@@ -366,7 +372,7 @@ resource "aws_ecs_service" "hasura" {
 
 resource "aws_s3_bucket" "hasura" {
   bucket = "hasura-${var.region}-${var.domain}"
-  acl = "private"
+  acl    = "private"
 }
 
 # -----------------------------------------------------------------------------
@@ -378,11 +384,11 @@ data "aws_elb_service_account" "main" {
 
 data "aws_iam_policy_document" "hasura" {
   statement {
-    actions = ["s3:PutObject"]
+    actions   = ["s3:PutObject"]
     resources = ["${aws_s3_bucket.hasura.arn}/alb/*"]
 
     principals {
-      type = "AWS"
+      type        = "AWS"
       identifiers = [data.aws_elb_service_account.main.arn]
     }
   }
@@ -398,13 +404,13 @@ resource "aws_s3_bucket_policy" "hasura" {
 # -----------------------------------------------------------------------------
 
 resource "aws_alb" "hasura" {
-  name = "hasura-alb"
-  subnets = aws_subnet.hasura_public.*.id
+  name            = "hasura-alb"
+  subnets         = aws_subnet.hasura_public.*.id
   security_groups = [aws_security_group.hasura_alb.id]
 
   access_logs {
-    bucket = aws_s3_bucket.hasura.id
-    prefix = "alb"
+    bucket  = aws_s3_bucket.hasura.id
+    prefix  = "alb"
     enabled = true
   }
 }
@@ -414,14 +420,14 @@ resource "aws_alb" "hasura" {
 # -----------------------------------------------------------------------------
 
 resource "aws_alb_target_group" "hasura" {
-  name = "hasura-alb"
-  port = 8080
-  protocol = "HTTP"
-  vpc_id = aws_vpc.hasura.id
+  name        = "hasura-alb"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.hasura.id
   target_type = "ip"
 
   health_check {
-    path = "/"
+    path    = "/"
     matcher = "302"
   }
 }
@@ -432,13 +438,13 @@ resource "aws_alb_target_group" "hasura" {
 
 resource "aws_alb_listener" "hasura" {
   load_balancer_arn = aws_alb.hasura.id
-  port = "443"
-  protocol = "HTTPS"
-  certificate_arn = aws_acm_certificate.hasura.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  certificate_arn   = aws_acm_certificate.hasura.arn
 
   default_action {
     target_group_arn = aws_alb_target_group.hasura.id
-    type = "forward"
+    type             = "forward"
   }
 }
 
@@ -448,12 +454,12 @@ resource "aws_alb_listener" "hasura" {
 
 resource "aws_route53_record" "hasura" {
   zone_id = data.aws_route53_zone.hasura.zone_id
-  name = "hasura.${var.domain}"
-  type = "A"
+  name    = "hasura.${var.domain}"
+  type    = "A"
 
   alias {
-    name = aws_alb.hasura.dns_name
-    zone_id = aws_alb.hasura.zone_id
+    name                   = aws_alb.hasura.dns_name
+    zone_id                = aws_alb.hasura.zone_id
     evaluate_target_health = true
   }
 }
