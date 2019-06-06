@@ -13,7 +13,7 @@ across multiple Availability Zones (AZ) with the following components:
 
 ## Support
 
-The master branch supports terraform-0.12. For older versions [check other git branches](https://github.com/Rayraegah/hasura-aws/tree/terraform-0.11).
+The master branch supports Terraform v0.12 and later. For Terraform v0.11 and older versions [check other git branches](https://github.com/Rayraegah/hasura-aws/tree/terraform-0.11).
 
 ## Glossary
 
@@ -28,25 +28,27 @@ The master branch supports terraform-0.12. For older versions [check other git b
 - AWS account
   - IAM user
   - domain with Route53
-- Terraform
+- Terraform v0.12
 
 ## Usage
 
 ```terraform
 module "hasura" {
-  source              = "github.com/rayraegah/hasura-aws"
-  region              = "YOUR DEPLOYMENT REGION"
-  domain              = "YOUR DOMAIN NAME"
-  app_subdomain       = "YOUR HASURA APP SUBDOMAIN"
-  hasura_version_tag  = "HASURA VERSION TAG FOR DEPLOYMENT"
-  hasura_access_key   = "YOUR HASURA ADMIN ACCESS KEY"
-  hasura_jwt_hmac_key = "YOUR HMAC KEY FOR JWT AUTHENTICATION"
-  rds_db_name         = "YOUR DATABASE NAME"
-  rds_instance        = "YOUR DATABASE INSTANCE SIZE"
-  rds_username        = "YOUR DATABASE USERNAME"
-  rds_password        = "YOUR DATABASE PASSWORD"
-  multi_az            = "ENABLE MULTIPLE AVAILABILITY ZONES"
-  az_count            = "NUMBER OF AVAILABILITY ZONES"
+  source                    = "github.com/rayraegah/hasura-aws"
+  region                    = "YOUR DEPLOYMENT REGION"
+  domain                    = "YOUR DOMAIN NAME"
+  app_subdomain             = "YOUR HASURA APP SUBDOMAIN"
+  hasura_version_tag        = "HASURA VERSION TAG FOR DEPLOYMENT"
+  hasura_access_key         = "YOUR HASURA ADMIN ACCESS KEY"
+  hasura_jwt_hmac_key       = "YOUR HMAC KEY FOR JWT AUTHENTICATION"
+  rds_db_name               = "YOUR DATABASE NAME"
+  rds_instance              = "YOUR DATABASE INSTANCE SIZE"
+  rds_username              = "YOUR DATABASE USERNAME"
+  rds_password              = "YOUR DATABASE PASSWORD"
+  multi_az                  = "ENABLE MULTIPLE AVAILABILITY ZONES"
+  az_count                  = "NUMBER OF AVAILABILITY ZONES"
+  vpc_enable_dns_hostnames  = "ENABLE DNS HOSTNAMES"
+  environment               = "ENV VARS FOR ECS TASK"
 }
 ```
 
