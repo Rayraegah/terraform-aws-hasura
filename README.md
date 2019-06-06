@@ -1,5 +1,7 @@
 # Hasura on AWS
 
+![supports terraform-0.12][terraform-0.12-badge]
+
 Terraform module to deploy Hausra graphql engine on AWS. This will deploy
 across multiple Availability Zones (AZ) with the following components:
 
@@ -8,6 +10,10 @@ across multiple Availability Zones (AZ) with the following components:
 - ALB for load balancing between the hasura tasks
 - Certificate issued by ACM for securing traffic to ALB
 - Logging for RDS, ECS, and ALB into Cloudwatch Logs
+
+## Support
+
+The master branch supports terraform-0.12. For older versions [check other git branches](https://github.com/Rayraegah/hasura-aws/tree/terraform-0.11).
 
 ## Glossary
 
@@ -46,4 +52,6 @@ module "hasura" {
 
 ## License
 
-MIT. Based on [Gordon Johnston](https://github.com/elgordino)'s architecture.
+Released under MIT License. Based on [Gordon Johnston](https://github.com/elgordino)'s proposed architecture.
+
+[terraform-0.12-badge]: https://img.shields.io/badge/terraform-0.12-brightgreen.svg
