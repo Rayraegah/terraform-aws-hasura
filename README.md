@@ -32,9 +32,12 @@ The master branch supports Terraform v0.12 and later. For Terraform v0.11 and ol
 
 ## Usage
 
+Copy and paste into your Terraform configuration, edit the variables, and run `terraform init`
+
 ```terraform
 module "hasura" {
-  source                    = "github.com/rayraegah/hasura-aws"
+  source                    = "Rayraegah/hasura/aws"
+  version                   = "2.0.0"
   region                    = "YOUR DEPLOYMENT REGION"
   domain                    = "YOUR DOMAIN NAME"
   app_subdomain             = "YOUR HASURA APP SUBDOMAIN"
