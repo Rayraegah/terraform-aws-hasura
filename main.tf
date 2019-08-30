@@ -203,6 +203,10 @@ resource "aws_db_instance" "hasura" {
   backup_retention_period     = 7
   backup_window               = "04:00-06:00"
   final_snapshot_identifier   = "hasura"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 # -----------------------------------------------------------------------------
