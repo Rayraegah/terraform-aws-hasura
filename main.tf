@@ -295,7 +295,7 @@ locals {
     },
     {
       name  = "HASURA_GRAPHQL_JWT_SECRET",
-      value = "{\"type\":\"HS256\", \"key\": \"${var.hasura_jwt_hmac_key}\"}"
+      value = "{\"type\":\"${var.hasura_jwt_secret_algo}\", \"key\": \"${var.hasura_jwt_secret_key}\"}"
     }
   ]
 
