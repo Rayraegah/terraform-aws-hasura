@@ -28,8 +28,8 @@ variable "hasura_version_tag" {
   default     = "v1.0.0-beta.3"
 }
 
-variable "hasura_access_key" {
-  description = "The access key to secure hasura; for admin access"
+variable "hasura_admin_secret" {
+  description = "The admin secret to secure hasura; for admin access"
 }
 
 variable "hasura_jwt_secret_key" {

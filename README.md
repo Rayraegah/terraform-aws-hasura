@@ -42,7 +42,7 @@ module "hasura" {
   domain                    = "YOUR DOMAIN NAME"
   app_subdomain             = "YOUR HASURA APP SUBDOMAIN"
   hasura_version_tag        = "HASURA VERSION TAG FOR DEPLOYMENT"
-  hasura_access_key         = "YOUR HASURA ADMIN ACCESS KEY"
+  hasura_admin_secret       = "YOUR HASURA ADMIN SECRET"
   hasura_jwt_secret_algo    = "ALGORITHM FOR JWT VERIFICATION (HMAC or RS256)"
   hasura_jwt_secret_key     = "YOUR PUBLIC KEY FOR JWT VERIFICATION"
   rds_db_name               = "YOUR DATABASE NAME"
