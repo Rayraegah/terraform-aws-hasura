@@ -2,11 +2,11 @@
 
 ![supports terraform-0.12][terraform-0.12-badge]
 
-Terraform module to deploy Hausra graphql engine on AWS. This will deploy
+Terraform module to deploy [Hasura GraphQL Engine](https://github.com/hasura/graphql-engine) on AWS. This will deploy
 across multiple Availability Zones (AZ) with the following components:
 
 - Postgres RDS deployed in multiple AZ
-- Hasura graphql engine in [Fargate](https://aws.amazon.com/fargate/) across multiple AZ
+- Hasura GraphQL Engine in [Fargate](https://aws.amazon.com/fargate/) across multiple AZ
 - ALB for load balancing between the hasura tasks
 - Certificate issued by ACM for securing traffic to ALB
 - Logging for RDS, ECS, and ALB into Cloudwatch Logs
