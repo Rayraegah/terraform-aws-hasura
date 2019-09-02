@@ -278,8 +278,8 @@ resource "aws_iam_role_policy_attachment" "hasura_role_log_publishing" {
 locals {
   ecs_environment = [
     {
-      name  = "HASURA_GRAPHQL_ACCESS_KEY",
-      value = "${var.hasura_access_key}"
+      name  = "HASURA_GRAPHQL_ADMIN_SECRET",
+      value = "${var.hasura_admin_secret}"
     },
     {
       name  = "HASURA_GRAPHQL_DATABASE_URL",
