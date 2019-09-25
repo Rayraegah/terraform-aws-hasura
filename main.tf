@@ -431,8 +431,8 @@ resource "aws_alb_target_group" "hasura" {
   target_type = "ip"
 
   health_check {
-    path    = "/"
-    matcher = "302"
+    path    = "/healthz"
+    matcher = "200"
   }
 }
 
