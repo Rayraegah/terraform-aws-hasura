@@ -81,3 +81,8 @@ variable "environment" {
   description = "Environment variables for ECS task: [ { name = \"foo\", value = \"bar\" }, ..]"
   default     = []
 }
+
+variable "additional_db_security_groups" {
+  description = "List of Security Group IDs to have access to the RDS instance"
+  default = []
+}

@@ -155,7 +155,7 @@ resource "aws_security_group" "hasura_rds" {
     protocol        = "tcp"
     from_port       = "5432"
     to_port         = "5432"
-    security_groups = [aws_security_group.hasura_ecs.id]
+    security_groups = concat([aws_security_group.hasura_ecs.id], var.additional_db_security_groups)
   }
 
   egress {
