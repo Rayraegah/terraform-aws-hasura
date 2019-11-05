@@ -37,7 +37,7 @@ Copy and paste into your Terraform configuration, edit the variables, and run `t
 ```terraform
 module "hasura" {
   source                    = "Rayraegah/hasura/aws"
-  version                   = "2.0.0"
+  version                   = "2.X.Y"
   region                    = "YOUR DEPLOYMENT REGION"
   domain                    = "YOUR DOMAIN NAME"
   app_subdomain             = "YOUR HASURA APP SUBDOMAIN"
