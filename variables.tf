@@ -16,16 +16,21 @@ variable "region" {
 }
 
 variable "domain" {
-  description = "Domain name. Service will be deployed at hasura.domain"
+  description = "Domain name. Service will be deployed using the hasura_subdomain"
+}
+
+variable "hasura_subdomain" {
+  description = "The Subdomain for your hasura graphql service."
+  default     = "hasura"
 }
 
 variable "app_subdomain" {
-  description = "The Subdomain for your application that will make CORS requests to hasura.domain"
+  description = "The Subdomain for your application that will make CORS requests to the hasura_subdomain"
   default     = "app"
 }
 variable "hasura_version_tag" {
   description = "The hasura graphql engine version tag"
-  default     = "v1.0.0-beta.3"
+  default     = "v1.0.0"
 }
 
 variable "hasura_admin_secret" {
@@ -84,5 +89,10 @@ variable "environment" {
 
 variable "additional_db_security_groups" {
   description = "List of Security Group IDs to have access to the RDS instance"
-  default = []
+  default     = []
+}
+
+variable "create_iam_service_linked_role" {
+  description = "Whether to create IAM service linked role for AWS ElasticSearch service. Can be only one per AWS account."
+  default     = true
 }

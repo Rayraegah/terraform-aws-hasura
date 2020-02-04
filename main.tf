@@ -4,6 +4,7 @@
 
 resource "aws_iam_service_linked_role" "ecs_service" {
   aws_service_name = "ecs.amazonaws.com"
+  count            = var.create_iam_service_linked_role ? 1 : 0
 }
 
 # -----------------------------------------------------------------------------
@@ -11,7 +12,7 @@ resource "aws_iam_service_linked_role" "ecs_service" {
 # -----------------------------------------------------------------------------
 
 resource "aws_acm_certificate" "hasura" {
-  domain_name       = "hasura.${var.domain}"
+  domain_name       = "${var.hasura_subdomain}.${var.domain}"
   validation_method = "DNS"
 
   lifecycle {
@@ -375,8 +376,9 @@ resource "aws_ecs_service" "hasura" {
 # -----------------------------------------------------------------------------
 
 resource "aws_s3_bucket" "hasura" {
-  bucket = "hasura-${var.region}-${var.domain}"
-  acl    = "private"
+  bucket        = "hasura-${var.region}-${var.hasura_subdomain}-${var.domain}"
+  acl           = "private"
+  force_destroy = "true"
 }
 
 # -----------------------------------------------------------------------------
@@ -458,7 +460,7 @@ resource "aws_alb_listener" "hasura" {
 
 resource "aws_route53_record" "hasura" {
   zone_id = data.aws_route53_zone.hasura.zone_id
-  name    = "hasura.${var.domain}"
+  name    = "${var.hasura_subdomain}.${var.domain}"
   type    = "A"
 
   alias {
