@@ -215,7 +215,7 @@ resource "aws_db_instance" "hasura" {
 # -----------------------------------------------------------------------------
 
 resource "aws_ecs_cluster" "hasura" {
-  name = "hasura-cluster"
+  name = ${var.ecs_cluster_name}
 }
 
 # -----------------------------------------------------------------------------
