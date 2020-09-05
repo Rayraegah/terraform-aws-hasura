@@ -57,7 +57,7 @@ module "hasura" {
   environment                     = "ENV VARS FOR ECS TASK"
   additional_db_security_groups   = "ADDITIONAL GROUPS ASSIGNED TO RDS INSTANCE"
   create_iam_service_linked_role  = "FALSE IF ROLE IS ALREADY CREATED"
-  ecs_cluster_name                = "YOUR CLUSTER NAME
+  ecs_cluster_name                = "YOUR CLUSTER NAME"
 }
 ```
 
