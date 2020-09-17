@@ -67,6 +67,11 @@ variable "rds_instance" {
   description = "The size of RDS instance, eg db.t2.micro"
 }
 
+variable "rds_storage_encrypted" {
+  description = "Wheter the data on the PostgreSQL instance should be encrpyted."
+  default     = false
+}
+
 variable "az_count" {
   description = "How many AZ's to create in the VPC"
   default     = 2
