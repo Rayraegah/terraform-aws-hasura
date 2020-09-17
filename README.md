@@ -51,6 +51,7 @@ module "hasura" {
   rds_instance                    = "YOUR DATABASE INSTANCE SIZE"
   rds_username                    = "YOUR DATABASE USERNAME"
   rds_password                    = "YOUR DATABASE PASSWORD"
+  rds_storage_encrypted           = "ENABLE DATABASE ENCRYPTION"
   multi_az                        = "ENABLE MULTIPLE AVAILABILITY ZONES"
   az_count                        = "NUMBER OF AVAILABILITY ZONES"
   vpc_enable_dns_hostnames        = "ENABLE DNS HOSTNAMES"
