@@ -68,7 +68,7 @@ variable "rds_instance" {
 }
 
 variable "rds_storage_encrypted" {
-  description = "Wheter the data on the PostgreSQL instance should be encrpyted."
+  description = "Whether the data on the PostgreSQL instance should be encrpyted."
   default     = false
 }
 
