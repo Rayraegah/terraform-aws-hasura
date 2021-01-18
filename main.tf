@@ -30,11 +30,11 @@ data "aws_route53_zone" "hasura" {
 
 resource "aws_route53_record" "hasura_validation" {
   depends_on = [aws_acm_certificate.hasura]
-  name       = aws_acm_certificate.hasura.domain_validation_options[0]["resource_record_name"]
-  type       = aws_acm_certificate.hasura.domain_validation_options[0]["resource_record_type"]
-  zone_id    = data.aws_route53_zone.hasura.zone_id
-  records    = [aws_acm_certificate.hasura.domain_validation_options[0]["resource_record_value"]]
-  ttl        = 300
+  name    = element(tolist(aws_acm_certificate.hasura.domain_validation_options), 0)["resource_record_name"]
+  type    = element(tolist(aws_acm_certificate.hasura.domain_validation_options), 0)["resource_record_type"]
+  zone_id = data.aws_route53_zone.hasura.zone_id
+  records = [element(tolist(aws_acm_certificate.hasura.domain_validation_options), 0)["resource_record_value"]]
+  ttl     = 300
 }
 
 resource "aws_acm_certificate_validation" "hasura" {
