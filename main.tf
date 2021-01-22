@@ -292,7 +292,7 @@ locals {
     },
     {
       name  = "HASURA_GRAPHQL_CORS_DOMAIN",
-      value = "https://${var.app_subdomain}.${var.domain}:443, https://${var.app_subdomain}.${var.domain}"
+      value = "${var.hasura_graphql_cors_domain == "" ? "https://${var.app_subdomain}.${var.domain}:443, https://${var.app_subdomain}.${var.domain}" : var.hasura_graphql_cors_domain}"
     },
     {
       name  = "HASURA_GRAPHQL_PG_CONNECTIONS",

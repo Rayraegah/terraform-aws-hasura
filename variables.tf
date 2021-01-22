@@ -51,6 +51,11 @@ variable "hasura_console_enabled" {
   default     = "true"
 }
 
+variable "hasura_graphql_cors_domain" {
+  description = "comma seperated list of domains to enable cors on. Also accepts * which will enable cors from all sub domain and domains. By default if not used it will use this module's app_subdomain and domain variables"
+  default     = ""
+}
+
 variable "rds_username" {
   description = "The username for RDS"
 }
