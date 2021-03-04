@@ -62,6 +62,15 @@ module "hasura" {
 }
 ```
 
+### Additional info about variables
+
+- `hasura_version_tag` comes from [here](https://hub.docker.com/r/hasura/graphql-engine/tags?page=1&ordering=last_updated) (e.g. "v.2.0.0-alpha.3")
+- `az_count` needs to be at least 2 or higher (due to AWS constraints, an rds instance must have at least one availability zone for failover)
+- `hasura_console_enabled` must be a string (i.e. `"true"`) and NOT a boolean (i.e. `true`). Other true/false variables can be booleans
+- `rds_db_name` must only contain alphanumeric characters and start with a letter
+- `ecs_cluster_name` must only contain alphanumeric characters and start with a letter
+- `domain` must be a domain you have a Route 53 hosted zone for
+
 ## License
 
 Released under MIT License. Based on [Gordon Johnston](https://github.com/elgordino)'s proposed architecture.
