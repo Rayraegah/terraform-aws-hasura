@@ -177,7 +177,7 @@ resource "aws_db_subnet_group" "hasura" {
 }
 
 resource "aws_db_instance" "hasura" {
-  name                   = var.rds_db_name
+  db_name                = var.rds_db_name
   identifier             = "hasura"
   username               = var.rds_username
   password               = var.rds_password
